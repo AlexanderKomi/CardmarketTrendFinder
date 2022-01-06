@@ -9,24 +9,34 @@ try:
 
     session = requests.Session()
 
-    def search_card(search_string):
-
+    def search_card(search_string, only_exact = 1):
         search_string = search_string.replace(" ", "+")
 
-        url = 'https://www.cardmarket.com/en/Magic/Products/Search?searchString=%5B' + search_string + '%5D'
+        if (only_exact):
+            url = 'https://www.cardmarket.com/en/Magic/Products/Search?searchString=%5B' + search_string.strip("\n") + '%5D'
+        else:
+            url = 'https://www.cardmarket.com/en/Magic/Products/Search?searchString=' + search_string.strip("\n")
+
         r = session.get(url)
         soup = BeautifulSoup(r.content, 'html.parser', parse_only=SoupStrainer(class_="col-12 col-md-8 px-2 flex-column"))
 
         body = soup.find("div", class_="table-body")
         if "/Search?" in r.url:
-            return get_trend(session.get('https://www.cardmarket.com' + soup.find("a", class_=None)['href']))
+            try:
+                return get_trend(session.get('https://www.cardmarket.com' + soup.find("a", class_=None)['href']))
+            except:
+                if (only_exact):
+                    return search_card(search_string, 0)
+                else:
+                    print("Failed to find " + search_string)
+                    return 0
+
         else:
             return get_trend(r)
 
     def get_trend(r):
         soup = BeautifulSoup(r.text, "html.parser", parse_only=SoupStrainer(['h1', 'dt', 'dd']))
         nh1 = soup.find("h1")
-
         name = nh1.text.replace(nh1.find_next().text, "")
         trend = soup.find("dt", text="Price Trend").find_next("dd").findChildren()[0].text
 
@@ -41,6 +51,8 @@ try:
             return False
 
     input_strings = open("input.txt", "r+").readlines()
+    #for testing with no input
+    #input_strings = ["sdsadsdas"]
 
     total_value = 0.0
     for line in input_strings:
