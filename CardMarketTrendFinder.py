@@ -1,12 +1,13 @@
-from string import printable
 from pip import List
 import requests
 from bs4 import BeautifulSoup, SoupStrainer
 import sys
 import os
-from currency_converter import CurrencyConverter
+# from currency_converter import CurrencyConverter
 
+# debugMode = False
 debugMode = True
+
 inputFile = "input.txt"
 outputFile = "output.csv"
 delimiter = ";"
@@ -14,15 +15,15 @@ delimiter = ";"
 
 class Card:
     CSV_HEADER = "name" + delimiter +\
-                 "price_trend" + delimiter + \
                  "edition" + delimiter + \
+                 "price_trend" + delimiter + \
                  "price_from" + delimiter + \
                  "thirty_days_average" + delimiter + \
                  "seven_days_average" + delimiter + \
                  "one_day_average"
     name: str = ""
-    price_trend: str = ""
     edition: str = ""
+    price_trend: str = ""
     price_from: str = ""
     thirty_days_average: str = ""
     seven_days_average: str = ""
@@ -31,9 +32,9 @@ class Card:
     def __str__(self):
         return self.name + \
                delimiter + \
-               str(self.price_trend) + \
-               delimiter + \
                self.edition + \
+               delimiter + \
+               str(self.price_trend) + \
                delimiter + \
                str(self.price_from) + \
                delimiter + \
@@ -77,12 +78,24 @@ def get_name(soup: BeautifulSoup):
     return name
 
 
+def trim_euro_symbol(price):
+    return float(price.replace(" €", "").replace(",", "."))
+
+
 def get_price_trend(soup: BeautifulSoup):
     price_trends = soup.find("dt", text="Price Trend")
     dd = price_trends.find_next("dd")
     children = dd.findChildren()
     trend = children[0].text
-    return float(trend.replace(" €", "").replace(",", "."))
+    return trim_euro_symbol(trend)
+
+
+def get_printed_in(soup: BeautifulSoup):
+    price_trends = soup.find("dt", text="Printed in")
+    dd = price_trends.find_next("dd")
+    children = dd.findChildren()
+    trend = children[0].text
+    return trend
 
 
 def scrape_fields(soup):
@@ -96,12 +109,15 @@ def scrape_fields(soup):
         for i, field in enumerate(strings):
             if field == 'From':
                 card.price_from = strings[i+1]
-            if field == '30-days average price':
+            elif field == '30-days average price':
                 card.thirty_days_average = strings[i+1]
-            if field == '7-days average price':
+            elif field == '7-days average price':
                 card.seven_days_average = strings[i+1]
-            if field == '1-day average price':
+            elif field == '1-day average price':
                 card.one_day_average = strings[i+1]
+            elif field == 'Printed in':
+                card.edition = strings[i+1]
+
     except Exception as e:
         print(e)
     return card
@@ -113,6 +129,7 @@ def get_trend(r):
     card = scrape_fields(soup)
     card.name = get_name(soup)
     card.price_trend = get_price_trend(soup)
+    card.edition = get_printed_in(soup)
     return card
 
 
@@ -128,7 +145,7 @@ def search_card(session, search_string, only_exact=1):
     r = session.get(url)
     soup = BeautifulSoup(r.content, 'html.parser', parse_only=SoupStrainer(class_="col-12 col-md-8 px-2 flex-column"))
 
-    body = soup.find("div", class_="table-body")
+    # body = soup.find("div", class_="table-body")
     if "/Search?" in r.url:
         try:
             return get_trend(session.get('https://www.cardmarket.com' + soup.find("a", class_=None)['href']))
@@ -147,12 +164,14 @@ def search_cards(input_strings: []):
     session = requests.Session()
     cards = []
     for line in input_strings:
+        # Hack to ignore leading numbers
         if is_number(line[0]):
             card = search_card(session, line.replace(line[0], ""))
             card.price_trend = card.price_trend * int(line[0])
         else:
             card = search_card(session, line)
         cards.append(card)
+
     return cards
 
 
@@ -163,9 +182,6 @@ def main():
     except:
         print("File cannot be opened: " + inputFile)
     try:
-        # for testing with no input
-        # input_strings = ["sdsadsdas"]
-
         cards = search_cards(input_strings)
         print_cards(cards)
         print_total_value(cards)
