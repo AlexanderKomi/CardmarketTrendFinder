@@ -48,12 +48,13 @@ def main():
     output_file = args.output_file
     delimiter = args.csv_delimiter
 
+    input_strings = []
     try:
         input_strings = read_input_file(input_file)
-        cards: List[Card] = search_cards(input_strings, debug_mode=debug_mode)
-        handle_found_cards(cards, output_file, delimiter)
     except:
         print("Input file cannot be openend: " + input_file)
+    cards: List[Card] = search_cards(input_strings, debug_mode=debug_mode)
+    handle_found_cards(cards, output_file, delimiter)
 
 
 if __name__ == "__main__":
