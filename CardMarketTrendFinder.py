@@ -2,7 +2,7 @@ from typing import List
 
 from card import Card
 
-from card_csv_export import export_cards_to_csv, cards_to_csv
+from card_csv_export import export_cards_to_csv, cards_to_csv, CSV_HEADER
 from scrape import search_cards
 
 # debug_mode = False
@@ -28,6 +28,7 @@ def handle_found_cards(cards: List[Card]):
         # print("or " + str(round(cc.convert(total_value, 'EUR', 'SEK'), 2)) + " SEK")
 
     csvs = cards_to_csv(cards)
+    print(CSV_HEADER)
     for csv in csvs:
         print(csv)
     export_cards_to_csv(outputFile, csvs)
@@ -36,7 +37,7 @@ def handle_found_cards(cards: List[Card]):
 
 def main():
     input_strings = read_input_file(inputFile)
-    cards: List[Card] = search_cards(input_strings)
+    cards: List[Card] = search_cards(input_strings, debug_mode=debug_mode)
     handle_found_cards(cards)
 
 

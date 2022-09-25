@@ -1,12 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from bs4 import BeautifulSoup, SoupStrainer
 import requests
 
-import sys
-import os
-
 from card import Card
+
+card_market_base_url = "https://www.cardmarket.com"
 
 
 def __get_name__(soup: BeautifulSoup) -> str:
@@ -60,10 +60,11 @@ def __scrape_fields__(soup, debug_mode=False) -> Card:
     return card
 
 
-def __get_trend__(r, debug_mode=False) -> Card:
-    soup = BeautifulSoup(r.text, "html.parser", parse_only=SoupStrainer(['h1', 'dt', 'dd']))
+def __get_trend__(text, debug_mode=False) -> Card:
+    soup = BeautifulSoup(text, "html.parser", parse_only=SoupStrainer(['h1', 'dt', 'dd']))
     # print(str(soup.text))
     card = __scrape_fields__(soup)
+    card.found = True
     card.name = __get_name__(soup)
     card.price_trend = __get_price_trend__(soup)
     card.edition = __get_printed_in__(soup)
@@ -71,31 +72,36 @@ def __get_trend__(r, debug_mode=False) -> Card:
 
 
 def __search_card__(session, search_string, only_exact=1, debug_mode=False) -> Card:
-    search_string = search_string.replace(" ", "+")
+    def get_url(search: str):
+        search = search.replace(" ", "+")
 
-    if only_exact:
-        url = 'https://www.cardmarket.com/en/Magic/Products/Search?searchString=%5B' + search_string.strip("\n") + '%5D'
-    else:
-        url = 'https://www.cardmarket.com/en/Magic/Products/Search?searchString=' + search_string.strip("\n")
-    if debug_mode:
-        print("Requesting url: " + url)
-    r = session.get(url)
+        if only_exact:
+            url = card_market_base_url + '/en/Magic/Products/Search?searchString=%5B' + search.strip("\n") + '%5D'
+        else:
+            url = card_market_base_url + '/en/Magic/Products/Search?searchString=' + search.strip("\n")
+        if debug_mode:
+            print("Requesting url: " + url)
+        return session.get(url)
+
+    r = get_url(search_string)
     soup = BeautifulSoup(r.content, 'html.parser', parse_only=SoupStrainer(class_="col-12 col-md-8 px-2 flex-column"))
 
     # body = soup.find("div", class_="table-body")
     if "/Search?" in r.url:
         try:
-            return __get_trend__(session.get('https://www.cardmarket.com' + soup.find("a", class_=None)['href']),
+            return __get_trend__(session.get(card_market_base_url + soup.find("a", class_=None)['href']).text,
                                  debug_mode=debug_mode)
         except:
             if only_exact:
                 return __search_card__(session, search_string, 0, debug_mode=debug_mode)
             else:
                 print("Failed to find " + search_string)
-                return 0
+                card: Card = Card()
+                card.name = search_string
+                return card
 
     else:
-        return __get_trend__(r)
+        return __get_trend__(r.text)
 
 
 def __search_card_by_line__(session, line: str, debug_mode=False) -> Card:
@@ -116,15 +122,15 @@ def __search_card_by_line__(session, line: str, debug_mode=False) -> Card:
 
 
 def search_cards(input_strings: [], debug_mode=False) -> List[Card]:
-    try:
-        session = requests.Session()
-        cards = []
-        for line in input_strings:
-            card = __search_card_by_line__(session, line, debug_mode=debug_mode)
-            cards.append(card)
+    session = requests.Session()
+    cards = []
 
-        return cards
-    except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(str(exc_type) + " at line " + str(exc_tb.tb_lineno) + ": " + str(e))
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for line in input_strings:
+            futures.append(executor.submit(__search_card_by_line__, session, line, debug_mode=debug_mode))
+
+        for future in futures:
+            card = future.result() # this will block
+            cards.append(card)
+    return cards

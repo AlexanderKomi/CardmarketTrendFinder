@@ -1,6 +1,7 @@
 
 
 class Card:
+    found: bool = False
     name: str = ""
     edition: str = ""
     price_trend: float = 0
