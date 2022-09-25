@@ -1,5 +1,3 @@
-
-
 class Card:
     found: bool = False
     name: str = ""

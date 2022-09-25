@@ -6,6 +6,7 @@ import requests
 
 from card import Card
 
+
 card_market_base_url = "https://www.cardmarket.com"
 
 
@@ -60,7 +61,7 @@ def __scrape_fields__(soup, debug_mode=False) -> Card:
     return card
 
 
-def __get_trend__(text, debug_mode=False) -> Card:
+def __get_trend__(text) -> Card:
     soup = BeautifulSoup(text, "html.parser", parse_only=SoupStrainer(['h1', 'dt', 'dd']))
     # print(str(soup.text))
     card = __scrape_fields__(soup)
@@ -89,8 +90,7 @@ def __search_card__(session, search_string, only_exact=1, debug_mode=False) -> C
     # body = soup.find("div", class_="table-body")
     if "/Search?" in r.url:
         try:
-            return __get_trend__(session.get(card_market_base_url + soup.find("a", class_=None)['href']).text,
-                                 debug_mode=debug_mode)
+            return __get_trend__(session.get(card_market_base_url + soup.find("a", class_=None)['href']).text)
         except:
             if only_exact:
                 return __search_card__(session, search_string, 0, debug_mode=debug_mode)
@@ -99,7 +99,6 @@ def __search_card__(session, search_string, only_exact=1, debug_mode=False) -> C
                 card: Card = Card()
                 card.name = search_string
                 return card
-
     else:
         return __get_trend__(r.text)
 

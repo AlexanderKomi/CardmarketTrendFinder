@@ -1,9 +1,9 @@
 from typing import List
 
-from card import Card
+from src.card import Card
 
-from card_csv_export import export_cards_to_csv, cards_to_csv, CSV_HEADER
-from scrape import search_cards
+from src.card_csv_export import export_cards_to_csv, cards_to_csv, CSV_HEADER
+from src.scrape import search_cards
 
 # debug_mode = False
 debug_mode = True
