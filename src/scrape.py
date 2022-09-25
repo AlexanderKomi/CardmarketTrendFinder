@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup, SoupStrainer
 import requests
 
 from card import Card
-
+from debug_utils import debug
 
 card_market_base_url = "https://www.cardmarket.com"
 
@@ -42,8 +42,7 @@ def __scrape_fields__(soup, debug_mode=False) -> Card:
         strings = []
         for field in soup.strings:
             strings.append(field)
-            if debug_mode:
-                print(field)
+            debug(debug_mode, field)
         for i, field in enumerate(strings):
             if field == 'From':
                 card.price_from = strings[i + 1]
@@ -73,31 +72,31 @@ def __get_trend__(text) -> Card:
 
 
 def __search_card__(session, search_string, only_exact=1, debug_mode=False) -> Card:
-    def get_url(search: str):
-        search = search.replace(" ", "+")
+    search_string = search_string.replace(" ", "+")
 
-        if only_exact:
-            url = card_market_base_url + '/en/Magic/Products/Search?searchString=%5B' + search.strip("\n") + '%5D'
-        else:
-            url = card_market_base_url + '/en/Magic/Products/Search?searchString=' + search.strip("\n")
-        if debug_mode:
-            print("Requesting url: " + url)
-        return session.get(url)
+    if only_exact:
+        url = card_market_base_url + '/en/Magic/Products/Search?searchString=%5B' + search_string.strip("\n") + '%5D'
+    else:
+        url = card_market_base_url + '/en/Magic/Products/Search?searchString=' + search_string.strip("\n")
+    debug(debug_mode, "Requesting url: " + url)
 
-    r = get_url(search_string)
+    r = session.get(url)
     soup = BeautifulSoup(r.content, 'html.parser', parse_only=SoupStrainer(class_="col-12 col-md-8 px-2 flex-column"))
 
     # body = soup.find("div", class_="table-body")
     if "/Search?" in r.url:
         try:
-            return __get_trend__(session.get(card_market_base_url + soup.find("a", class_=None)['href']).text)
+            card = __get_trend__(session.get(card_market_base_url + soup.find("a", class_=None)['href']).text)
+            card.url = url
+            return card
         except:
             if only_exact:
                 return __search_card__(session, search_string, 0, debug_mode=debug_mode)
             else:
-                print("Failed to find " + search_string)
+                debug(debug_mode, "Failed to find " + search_string)
                 card: Card = Card()
                 card.name = search_string
+                card.url = url
                 return card
     else:
         return __get_trend__(r.text)
@@ -130,6 +129,6 @@ def search_cards(input_strings: [], debug_mode=False) -> List[Card]:
             futures.append(executor.submit(__search_card_by_line__, session, line, debug_mode=debug_mode))
 
         for future in futures:
-            card = future.result() # this will block
+            card = future.result()  # this will block
             cards.append(card)
     return cards

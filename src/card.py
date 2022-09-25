@@ -7,6 +7,7 @@ class Card:
     thirty_days_average: str = ""
     seven_days_average: str = ""
     one_day_average: str = ""
+    url: str = ""
 
     def __str__(self):
         return self.name

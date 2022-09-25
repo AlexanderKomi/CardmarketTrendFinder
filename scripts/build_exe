@@ -1,0 +1,3 @@
+#!/bin/sh
+
+pyinstaller .\CardMarketTrendFinder.py .\src\card.py .\src\card_csv_export.py .\src\scrape.py
