@@ -1,3 +1,10 @@
+# Project generated files
+input.txt
+output.csv
+
+
+# Generated
+# -------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
